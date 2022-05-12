@@ -17,7 +17,7 @@ public class NettyDataCollector {
     private static final Logger logger = LoggerFactory.getLogger(NettyDataCollector.class);
 
     public static void main(String[] args) {
-        final int port = 8081;
+        final int port = 8888;
         final EventLoopGroup bossGroup = new NioEventLoopGroup(0,
                 ExecutorHelper.threadNameThreadFactory("bossGroup"));
         final EventLoopGroup workerGroup = new NioEventLoopGroup(0,
