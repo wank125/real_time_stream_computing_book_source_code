@@ -10,10 +10,9 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
-import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.*;
 
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
@@ -49,19 +48,27 @@ public final class WordCountDemo {
 
         final KStream<String, byte[]> source = builder.stream(topic);
 
-        source.map(new KeyValueMapper<String, byte[], KeyValue<String, RequestMsg>>() {
-            @Override
-            public KeyValue<String, RequestMsg> apply(String key, byte[] value) {
-                RequestMsg requestMsg = JSONObject.parseObject(new String(value, Charsets.UTF_8), RequestMsg.class);
-                return new KeyValue<>(key, requestMsg);
-            }
-        }).map(new KeyValueMapper<String, RequestMsg, KeyValue<String, String>>() {
+        KTable<String, Long> counts = source.map(new KeyValueMapper<String, byte[], KeyValue<String, RequestMsg>>() {
+                    @Override
+                    public KeyValue<String, RequestMsg> apply(String key, byte[] value) {
+                        RequestMsg requestMsg = JSONObject.parseObject(new String(value, Charsets.UTF_8), RequestMsg.class);
+                        return new KeyValue<>(key, requestMsg);
+                    }
+                }).map(new KeyValueMapper<String, RequestMsg, KeyValue<String, String>>() {
 
-            @Override
-            public KeyValue<String, String> apply(String key, RequestMsg value) {
-                return new KeyValue<String, String>(key, value.getIp());
-            }
-        }).to("wordcount-output", Produced.with(Serdes.String(), Serdes.String()));
+                    @Override
+                    public KeyValue<String, String> apply(String key, RequestMsg value) {
+                        return new KeyValue<String, String>(key, value.getIp());
+                    }
+                }).groupBy((key, value) -> value)
+                .count();
+
+        counts.toStream().foreach((key, value) -> {
+            System.out.println("key: " + key + ",count: " + value);
+        });
+
+
+        //   .to("wordcount-output", Produced.with(Serdes.String(), Serdes.String()));
         //  counts.toStream().to("streams-wordcount-output", Produced.with(Serdes.String(), Serdes.Long()));
 
 //        final KTable<String, Long> counts = source
