@@ -6,6 +6,7 @@ import com.alain898.book.realtimestreaming.common.kafka.KafkaWriter;
 import com.alain898.book.realtimestreaming.common.kafka.KafkaWriterMock;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson.parser.Feature;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import io.netty.buffer.ByteBuf;
@@ -19,8 +20,11 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_TYPE;
 import static io.netty.handler.codec.http.HttpMethod.OPTIONS;
@@ -37,8 +41,8 @@ public class AsyncServerHandler extends
 
     private final String kafkaBroker = "127.0.0.1:9092";
     private final String topic = "collector_event";
-    private final KafkaWriter kafkaWriter = new KafkaWriterMock(kafkaBroker);
-
+    //private final KafkaWriter kafkaWriter = new KafkaWriterMock(kafkaBroker);
+    private final KafkaWriter kafkaWriter = new KafkaWriter(kafkaBroker);
 
     // step1: 对消息进行解码
     private JSONObject decode(ChannelHandlerContext ctx, HttpRequest req) {
@@ -67,7 +71,27 @@ public class AsyncServerHandler extends
 
         byte[] body = readRequestBodyAsString((HttpContent) req);
         String jsonString = new String(body, Charsets.UTF_8);
-        return JSON.parseObject(jsonString);
+        String pattern = "(?<ip>\\d+\\.\\d+\\.\\d+\\.\\d+)(?<line> (.*?))(?<host> (.*?))(?<datetime> \\[(.*?)])(?<t1>\\s[\\\\\"]+)(?<requestMethod>[A-Z[/url]]+)(?<t2> )(?<requestUrl>\\S+\\s)(?<protocol>\\S+\")(?<status> \\d+)(?<bytes> \\d+)" +
+                "(?<referer> \"(.*?)\")(?<agent> \"(.*?)\")(?<forwarded> \"(.*?)\")";
+        Pattern r = Pattern.compile(pattern);
+        Matcher m = r.matcher(jsonString);
+        RequestMsg requestMsg = new RequestMsg();
+        if (m.find()) {
+            requestMsg.setIp(m.group("ip").trim());
+            requestMsg.setHost(m.group("host").trim());
+            String datetime = m.group("datetime").trim().replaceAll(" - - |\\[|\\]", "");
+            requestMsg.setDatetime(datetime);
+            requestMsg.setRequestMethod(m.group("requestMethod").trim());
+            requestMsg.setRequestUrl(m.group("requestUrl").trim());
+            requestMsg.setProtocol(m.group("protocol").trim());
+            requestMsg.setStatus(m.group("status").trim());
+            requestMsg.setBytes(m.group("bytes").trim());
+            requestMsg.setRefer(m.group("referer").trim());
+            requestMsg.setAgent(m.group("agent").trim());
+            requestMsg.setForwarded(m.group("forwarded").trim());
+        }
+
+        return (JSONObject) JSON.toJSON(requestMsg);
     }
 
     // step2: 对消息进行抽取、清洗、转化

@@ -1,13 +1,14 @@
 package com.alain898.book.realtimestreaming.common.kafka;
 
 import com.google.common.base.Preconditions;
-import kafka.consumer.*;
-import kafka.javaapi.consumer.ConsumerConnector;
-import kafka.message.MessageAndMetadata;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Properties;
 
 /**
  * Created by alain on 15/11/20.
@@ -17,8 +18,8 @@ public class KafkaReader {
 
     protected Properties props;
     protected String topic;
-    protected ConsumerConnector consumer;
-    private ConsumerIterator<byte[], byte[]> consumerIterator;
+    protected KafkaConsumer<byte[], byte[]> consumer;
+    //  private ConsumerIterator<byte[], byte[]> consumerIterator;
 
     final static protected Properties DEFAULT_KAFKA_PROPERTIES = new Properties();
 
@@ -28,7 +29,7 @@ public class KafkaReader {
         DEFAULT_KAFKA_PROPERTIES.put("zookeeper.sync.time.ms", "2000");
         DEFAULT_KAFKA_PROPERTIES.put("auto.commit.interval.ms", "1000");
         DEFAULT_KAFKA_PROPERTIES.put("auto.offset.reset", "largest");
-        List<String> list =new ArrayList<>();
+        List<String> list = new ArrayList<>();
         list.stream().count();
     }
 
@@ -44,7 +45,8 @@ public class KafkaReader {
         kafkaProp.setProperty("auto.offset.reset", offsetReset);
         this.props = PropertiesUtil.newProperties(DEFAULT_KAFKA_PROPERTIES, kafkaProp);
         this.topic = topic;
-        this.consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(this.props));
+        // this.consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(this.props));
+        this.consumer = new KafkaConsumer<byte[], byte[]>(this.props);
         initKafkaStream();
     }
 
@@ -54,7 +56,8 @@ public class KafkaReader {
 
         this.props = PropertiesUtil.newProperties(DEFAULT_KAFKA_PROPERTIES, props);
         this.topic = topic;
-        this.consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(this.props));
+        //this.consumer = Consumer.createJavaConsumerConnector(new ConsumerConfig(this.props));
+        this.consumer=new KafkaConsumer<byte[], byte[]>(this.props);
         initKafkaStream();
     }
 
@@ -63,26 +66,26 @@ public class KafkaReader {
         // use must one thread to preserve event order.
         topicCountMap.put(topic, 1);
         logger.info(String.format("initKafkaStream with topic[%s]", topic));
-        Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
-        KafkaStream<byte[], byte[]> kafkaStream = consumerMap.get(topic).get(0);
-        this.consumerIterator = kafkaStream.iterator();
+       // Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer.createMessageStreams(topicCountMap);
+      //  KafkaStream<byte[], byte[]> kafkaStream = consumerMap.get(topic).get(0);
+       // this.consumerIterator = kafkaStream.iterator();
     }
-
-    public boolean hasNext() {
-        try {
-            consumerIterator.hasNext();
-            return true;
-        } catch (ConsumerTimeoutException ex) {
-            return false;
-        } catch (Exception ex) {
-            logger.error("kafka receiver exception: " + ex);
-            throw ex;
-        }
-    }
-
-    public byte[] next() {
-        MessageAndMetadata<byte[], byte[]> msg = consumerIterator.next();
-        return msg.message();
-    }
+//
+//    public boolean hasNext() {
+//        try {
+//            consumerIterator.hasNext();
+//            return true;
+//        } catch (ConsumerTimeoutException ex) {
+//            return false;
+//        } catch (Exception ex) {
+//            logger.error("kafka receiver exception: " + ex);
+//            throw ex;
+//        }
+//    }
+//
+//    public byte[] next() {
+//        MessageAndMetadata<byte[], byte[]> msg = consumerIterator.next();
+//        return msg.message();
+//    }
 }
 
